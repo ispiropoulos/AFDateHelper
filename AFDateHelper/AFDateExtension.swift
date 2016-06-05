@@ -1,7 +1,7 @@
 //
 //  AFDateExtension.swift
 //
-//  Version 3.4.0
+//  Version 3.1.1
 //
 //  Created by Melvin Rivera on 7/15/14.
 //  Copyright (c) 2014. All rights reserved.
@@ -45,10 +45,6 @@ public enum DateFormat {
     case ISO8601(ISO8601Format?), DotNet, RSS, AltRSS, Custom(String)
 }
 
-public enum TimeZone {
-    case Local, UTC
-}
-
 public extension NSDate {
     
     // MARK: Intervals In Seconds
@@ -76,12 +72,11 @@ public extension NSDate {
     
     - Parameter fromString Date string i.e. "16 July 1972 6:12:00".
     - Parameter format The Date Formatter type can be .ISO8601(ISO8601Format?), .DotNet, .RSS, .AltRSS or Custom(String).
-    - Parameter timeZone: The time zone to interpret fromString can be .Local, .UTC applies to Custom format only
     
     - Returns A new date
     */
     
-    convenience init(fromString string: String, format:DateFormat, timeZone: TimeZone = .Local)
+    convenience init(fromString string: String, format:DateFormat)
     {
         if string.isEmpty {
             self.init()
@@ -89,15 +84,6 @@ public extension NSDate {
         }
         
         let string = string as NSString
-        
-        let zone: NSTimeZone
-        
-        switch timeZone {
-        case .Local:
-            zone = NSTimeZone.localTimeZone()
-        case .UTC:
-            zone = NSTimeZone(forSecondsFromGMT: 0)
-        }
         
         switch format {
             
@@ -114,7 +100,7 @@ public extension NSDate {
             
             let dateFormat = (isoFormat != nil) ? isoFormat! : ISO8601Format(dateString: string as String)
             let formatter = NSDate.formatter(format: dateFormat.rawValue)
-            formatter.locale = NSLocale(localeIdentifier: "en_US_POSIX")
+            formatter.locale = NSLocale(localeIdentifier: "en_US")
             formatter.timeZone = NSTimeZone.localTimeZone()
             formatter.dateFormat = dateFormat.rawValue
             if let date = formatter.dateFromString(string as String) {
@@ -130,6 +116,8 @@ public extension NSDate {
                 s = s.substringToIndex(s.length-1) + "GMT"
             }
             let formatter = NSDate.formatter(format: RSSFormat)
+            formatter.locale = NSLocale(localeIdentifier: "en_US")
+
             if let date = formatter.dateFromString(string as String) {
                 self.init(timeInterval:0, sinceDate:date)
             } else {
@@ -143,6 +131,7 @@ public extension NSDate {
                 s = s.substringToIndex(s.length-1) + "GMT"
             }
             let formatter = NSDate.formatter(format: AltRSSFormat)
+            
             if let date = formatter.dateFromString(string as String) {
                 self.init(timeInterval:0, sinceDate:date)
             } else {
@@ -150,8 +139,8 @@ public extension NSDate {
             }
             
         case .Custom(let dateFormat):
-            
-            let formatter = NSDate.formatter(format: dateFormat, timeZone: zone)
+            let formatter = NSDate.formatter(format: dateFormat)
+            formatter.locale = NSLocale(localeIdentifier: "en_US")
             if let date = formatter.dateFromString(string as String) {
                 self.init(timeInterval:0, sinceDate:date)
             } else {
@@ -254,22 +243,9 @@ public extension NSDate {
     {
         let comp1 = NSDate.components(fromDate: self)
         let comp2 = NSDate.components(fromDate: date)
-        return comp1.year == comp2.year
+        return (comp1.year == comp2.year)
     }
     
-    /**
-     Returns true if dates are in the same month
-     
-     - Parameter date: The date to compare
-     */
-    func isSameMonthAsDate(date: NSDate) -> Bool
-    {
-      let comp1 = NSDate.components(fromDate: self)
-      let comp2 = NSDate.components(fromDate: date)
-      
-      return comp1.year == comp2.year && comp1.month == comp2.month
-    }
-  
     /**
     Returns true if date is this year.
     */
@@ -336,58 +312,6 @@ public extension NSDate {
     
     
     // MARK: Adjusting Dates
-    
-    /**
-     Creates a new date by a adding months.
-     
-     - Parameter days: The number of months to add.
-     - Returns A new date object.
-     */
-    func dateByAddingMonths(months: Int) -> NSDate
-    {
-        let dateComp = NSDateComponents()
-        dateComp.month = months
-        return NSCalendar.currentCalendar().dateByAddingComponents(dateComp, toDate: self, options: NSCalendarOptions(rawValue: 0))!
-    }
-    
-    /**
-     Creates a new date by a substracting months.
-     
-     - Parameter days: The number of months to substract.
-     - Returns A new date object.
-     */
-    func dateBySubtractingMonths(months: Int) -> NSDate
-    {
-        let dateComp = NSDateComponents()
-        dateComp.month = (months * -1)
-        return NSCalendar.currentCalendar().dateByAddingComponents(dateComp, toDate: self, options: NSCalendarOptions(rawValue: 0))!
-    }
-    
-    /**
-     Creates a new date by a adding weeks.
-     
-     - Parameter days: The number of weeks to add.
-     - Returns A new date object.
-     */
-    func dateByAddingWeeks(weeks: Int) -> NSDate
-    {
-        let dateComp = NSDateComponents()
-        dateComp.day = 7 * weeks
-        return NSCalendar.currentCalendar().dateByAddingComponents(dateComp, toDate: self, options: NSCalendarOptions(rawValue: 0))!
-    }
-    
-    /**
-     Creates a new date by a substracting weeks.
-     
-     - Parameter days: The number of weeks to substract.
-     - Returns A new date object.
-     */
-    func dateBySubtractingWeeks(weeks: Int) -> NSDate
-    {
-        let dateComp = NSDateComponents()
-        dateComp.day = ((7 * weeks) * -1)
-        return NSCalendar.currentCalendar().dateByAddingComponents(dateComp, toDate: self, options: NSCalendarOptions(rawValue: 0))!
-    }
     
     /**
     Creates a new date by a adding days.
@@ -610,19 +534,6 @@ public extension NSDate {
         return NSDate().dateBySubtractingDays(1).dateAtStartOfDay()
     }
     
-    /**
-     Return a new NSDate object with the new hour, minute and seconds values
-     
-     :returns: NSDate
-     */
-    func setTimeOfDate(hour hour: Int, minute: Int, second: Int) -> NSDate {
-        let components = self.components()
-        components.hour = hour
-        components.minute = minute
-        components.second = second
-        return NSCalendar.currentCalendar().dateFromComponents(components)!
-    }
-    
     
     // MARK: Retrieving Intervals
     
@@ -822,13 +733,11 @@ public extension NSDate {
     A string representation based on a format.
     
     - Parameter format: The format of date can be .ISO8601(.ISO8601Format?), .DotNet, .RSS, .AltRSS or Custom(FormatString).
-    - Parameter timeZone: The time zone to interpret the date can be .Local, .UTC applies to Custom format only
     - Returns The date string representation
     */
-    func toString(format format: DateFormat, timeZone: TimeZone = .Local) -> String
+    func toString(format format: DateFormat) -> String
     {
         var dateFormat: String
-        let zone: NSTimeZone
         switch format {
         case .DotNet:
             let offset = NSTimeZone.defaultTimeZone().secondsFromGMT / 3600
@@ -836,24 +745,15 @@ public extension NSDate {
             return  "/Date(\(nowMillis)\(offset))/"
         case .ISO8601(let isoFormat):
             dateFormat = (isoFormat != nil) ? isoFormat!.rawValue : ISO8601Format.DateTimeMilliSec.rawValue
-            zone = NSTimeZone.localTimeZone()
         case .RSS:
             dateFormat = RSSFormat
-            zone = NSTimeZone.localTimeZone()
         case .AltRSS:
             dateFormat = AltRSSFormat
-            zone = NSTimeZone.localTimeZone()
         case .Custom(let string):
-            switch timeZone {
-            case .Local:
-                zone = NSTimeZone.localTimeZone()
-            case .UTC:
-                zone = NSTimeZone(forSecondsFromGMT: 0)
-            }
             dateFormat = string
         }
-        
-        let formatter = NSDate.formatter(format: dateFormat, timeZone: zone)
+        let formatter = NSDate.formatter(format: dateFormat)
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
         return formatter.stringFromDate(self)
     }
     
@@ -863,13 +763,13 @@ public extension NSDate {
     - Parameter dateStyle: The date style to use.
     - Parameter timeStyle: The time style to use.
     - Parameter doesRelativeDateFormatting: Enables relative date formatting.
-    - Parameter timeZone: The time zone to use.
-    - Parameter locale: The locale to use.
     - Returns A string representation of the date.
     */
-    func toString(dateStyle dateStyle: NSDateFormatterStyle, timeStyle: NSDateFormatterStyle, doesRelativeDateFormatting: Bool = false, timeZone: NSTimeZone = NSTimeZone.localTimeZone(), locale: NSLocale = NSLocale.currentLocale()) -> String
+    func toString(dateStyle dateStyle: NSDateFormatterStyle, timeStyle: NSDateFormatterStyle, doesRelativeDateFormatting: Bool = false) -> String
     {
-        let formatter = NSDate.formatter(dateStyle: dateStyle, timeStyle: timeStyle, doesRelativeDateFormatting: doesRelativeDateFormatting, timeZone: timeZone, locale: locale)
+        let formatter = NSDate.formatter(dateStyle: dateStyle, timeStyle: timeStyle, doesRelativeDateFormatting: doesRelativeDateFormatting)
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
+
         return formatter.stringFromDate(self)
     }
     
@@ -881,48 +781,41 @@ public extension NSDate {
         let time = self.timeIntervalSince1970
         let now = NSDate().timeIntervalSince1970
         
-        let timeIsInPast = now - time > 0
-        
-        let seconds = abs(now - time)
+        let seconds = now - time
         let minutes = round(seconds/60)
         let hours = round(minutes/60)
         let days = round(hours/24)
         
-        func describe(time: String) -> String {
-            if timeIsInPast { return "\(time) ago" }
-            else { return "in \(time)" }
-        }
-        
         if seconds < 10 {
             return NSLocalizedString("just now", comment: "Show the relative time from a date")
         } else if seconds < 60 {
-            let relativeTime = NSLocalizedString(describe("%.f seconds"), comment: "Show the relative time from a date")
+            let relativeTime = NSLocalizedString("%.f seconds ago", comment: "Show the relative time from a date")
             return String(format: relativeTime, seconds)
         }
         
         if minutes < 60 {
             if minutes == 1 {
-                return NSLocalizedString(describe("1 minute"), comment: "Show the relative time from a date")
+                return NSLocalizedString("1 minute ago", comment: "Show the relative time from a date")
             } else {
-                let relativeTime = NSLocalizedString(describe("%.f minutes"), comment: "Show the relative time from a date")
+                let relativeTime = NSLocalizedString("%.f minutes ago", comment: "Show the relative time from a date")
                 return String(format: relativeTime, minutes)
             }
         }
         
         if hours < 24 {
             if hours == 1 {
-                return NSLocalizedString(describe("1 hour"), comment: "Show the relative time from a date")
+                return NSLocalizedString("1 hour ago", comment: "Show the relative time from a date")
             } else {
-                let relativeTime = NSLocalizedString(describe("%.f hours"), comment: "Show the relative time from a date")
+                let relativeTime = NSLocalizedString("%.f hours ago", comment: "Show the relative time from a date")
                 return String(format: relativeTime, hours)
             }
         }
         
         if days < 7 {
             if days == 1 {
-                return NSLocalizedString(describe("1 day"), comment: "Show the relative time from a date")
+                return NSLocalizedString("1 day ago", comment: "Show the relative time from a date")
             } else {
-                let relativeTime = NSLocalizedString(describe("%.f days"), comment: "Show the relative time from a date")
+                let relativeTime = NSLocalizedString("%.f days ago", comment: "Show the relative time from a date")
                 return String(format: relativeTime, days)
             }
         }
@@ -935,6 +828,8 @@ public extension NSDate {
     */
     func weekdayToString() -> String {
         let formatter = NSDate.formatter()
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
+
         return formatter.weekdaySymbols[self.weekday()-1] as String
     }
     
@@ -943,6 +838,8 @@ public extension NSDate {
     */
     func shortWeekdayToString() -> String {
         let formatter = NSDate.formatter()
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
+
         return formatter.shortWeekdaySymbols[self.weekday()-1] as String
     }
     
@@ -953,6 +850,7 @@ public extension NSDate {
     */
     func veryShortWeekdayToString() -> String {
         let formatter = NSDate.formatter()
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
         return formatter.veryShortWeekdaySymbols[self.weekday()-1] as String
     }
     
@@ -963,6 +861,8 @@ public extension NSDate {
     */
     func monthToString() -> String {
         let formatter = NSDate.formatter()
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
+
         return formatter.monthSymbols[self.month()-1] as String
     }
     
@@ -973,6 +873,8 @@ public extension NSDate {
     */
     func shortMonthToString() -> String {
         let formatter = NSDate.formatter()
+        
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
         return formatter.shortMonthSymbols[self.month()-1] as String
     }
     
@@ -983,6 +885,7 @@ public extension NSDate {
     */
     func veryShortMonthToString() -> String {
         let formatter = NSDate.formatter()
+        formatter.locale = NSLocale(localeIdentifier: "en_US")
         return formatter.veryShortMonthSymbols[self.month()-1] as String
     }
     
@@ -1011,7 +914,7 @@ public extension NSDate {
     - Parameter locale: The locale to use, defaults to the current locale
     - Returns The date formatter.
     */
-    private class func formatter(format format:String = DefaultFormat, timeZone: NSTimeZone = NSTimeZone.localTimeZone(), locale: NSLocale = NSLocale.currentLocale()) -> NSDateFormatter {
+    private class func formatter(format format:String = DefaultFormat, timeZone: NSTimeZone = NSTimeZone.localTimeZone(), locale: NSLocale = NSLocale(localeIdentifier: "en_US")) -> NSDateFormatter {
         let hashKey = "\(format.hashValue)\(timeZone.hashValue)\(locale.hashValue)"
         var formatters = NSDate.sharedDateFormatters()
         if let cachedDateFormatter = formatters[hashKey] {
@@ -1036,7 +939,7 @@ public extension NSDate {
     - Parameter locale: The locale to use.
     - Returns The date formatter.
     */
-    private class func formatter(dateStyle dateStyle: NSDateFormatterStyle, timeStyle: NSDateFormatterStyle, doesRelativeDateFormatting: Bool, timeZone: NSTimeZone = NSTimeZone.localTimeZone(), locale: NSLocale = NSLocale.currentLocale()) -> NSDateFormatter {
+    private class func formatter(dateStyle dateStyle: NSDateFormatterStyle, timeStyle: NSDateFormatterStyle, doesRelativeDateFormatting: Bool, timeZone: NSTimeZone = NSTimeZone.localTimeZone(), locale: NSLocale = NSLocale(localeIdentifier: "en_US")) -> NSDateFormatter {
         var formatters = NSDate.sharedDateFormatters()
         let hashKey = "\(dateStyle.hashValue)\(timeStyle.hashValue)\(doesRelativeDateFormatting.hashValue)\(timeZone.hashValue)\(locale.hashValue)"
         if let cachedDateFormatter = formatters[hashKey] {
